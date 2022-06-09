@@ -4,54 +4,71 @@ services:
 
   db:
     image: postgres:14
+    restart: always
     container_name: mlflow_postgres
     volumes: 
-      - ./db_data/db:/var/lib/postgresql/data
+      - ./storage_db:/var/lib/postgresql/data
     environment: 
-      - POSTGRES_DB=mlflow_db
-      - POSTGRES_USER=mlflow
-      - POSTGRES_PASSWORD=mlflow_meme
-    ports:
-      - 5000:5432
+      - POSTGRES_DB=${DB_DB}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    expose:
+      - ${DB_PORT}
     networks:
       - mlflow_net
 
   s3:
     image: minio/minio
+    restart: always
     container_name: mlflow_s3
     ports:
       - "9000:9000"
       - "9001:9001"
     volumes:
-      - ./storage/minio:/data
+      - ./storage_minio:/data
     environment:
-      MINIO_ACCESS_KEY: mlflow
-      MINIO_SECRET_KEY: mlflow_meme
-    command: server /data --console-address ":9001"
+      MINIO_ACCESS_KEY: ${AWS_ACCESS_KEY_ID}
+      MINIO_SECRET_KEY: ${AWS_SECRET_ACCESS_KEY}
+
+    command: server --console-address ":9001" /data/
     networks:
+      - s3
       - mlflow_net
-
-
 
   server:
     image: mlflow_server
+    restart: always
     build:
       context: .
       dockerfile: ./dockerfile
     container_name: mlflow_server
+    environment:
+      - BACKEND=postgresql://${DB_USER}:${DB_PASSWORD}@db:${DB_PORT}/${DB_DB}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - ARTIFACTS=s3://${AWS_BUCKET_NAME}/
+      - MLFLOW_S3_ENDPOINT_URL=http://s3:9000
     ports:
-      - 8118:8118
-    command: mlflow ui --backend-store-uri postgresql://mlflow:mlflow_meme@host.docker.internal:5000/mlflow_db --default-artifact-root S3:/mlflow --host 0.0.0.0 --port 8118
-    volumes: 
-      - .:/code
+      - ${MLFLOW_PORT}:${MLFLOW_PORT}
+    command: 
+      - sh
+      - -c
+      - mlflow server 
+        --host 0.0.0.0
+        --port ${MLFLOW_PORT}
+        --backend-store-uri $${BACKEND} 
+        --default-artifact-root $${ARTIFACTS}
     depends_on: 
       - db
+      - s3
     networks:
       - mlflow_net
+      - s3
 
 
 
 networks:
   mlflow_net:
     driver: bridge
-    name: mlflow_net
+  s3:
+    driver: bridge
