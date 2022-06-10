@@ -1,0 +1,69 @@
+version: '3.10'
+
+services:
+
+  db:
+    image: postgres:11
+    restart: always
+    container_name: mlflow_postgres
+    volumes: 
+      - ./storage_db:/var/lib/postgresql/data
+    environment: 
+      - POSTGRES_DB=${DB_DB}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    expose:
+      - ${DB_PORT}
+    networks:
+      - mlflow_net
+
+  s3:
+    image: minio/minio
+    restart: always
+    container_name: mlflow_s3
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ./storage_minio:/data
+    environment:
+      MINIO_ACCESS_KEY: ${AWS_ACCESS_KEY_ID}
+      MINIO_SECRET_KEY: ${AWS_SECRET_ACCESS_KEY}
+    command: server --address ":9000" --console-address ":9001" /data/
+    networks:
+      - mlflow_net
+
+  server:
+    image: mlflow_server
+    restart: always
+    build:
+      context: .
+      dockerfile: ./dockerfile
+    container_name: mlflow_server
+    environment:
+      - BACKEND=postgresql://${DB_USER}:${DB_PASSWORD}@db:${DB_PORT}/${DB_DB}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - ARTIFACTS=s3://${AWS_BUCKET_NAME}
+      - MLFLOW_S3_ENDPOINT_URL=http://s3:9000
+    ports:
+      - ${MLFLOW_PORT}:${MLFLOW_PORT}
+    command: 
+      - sh
+      - -c
+      - mlflow server 
+        --host 0.0.0.0
+        --port ${MLFLOW_PORT}
+        --serve-artifacts
+        --backend-store-uri $${BACKEND} 
+        --artifacts-destination $${ARTIFACTS}
+    depends_on: 
+      - db
+      - s3
+    networks:
+      - mlflow_net
+
+networks:
+  mlflow_net:
+    driver: bridge
+
