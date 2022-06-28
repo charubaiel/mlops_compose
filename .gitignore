@@ -127,4 +127,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-storage_minio/.minio.sys*
+storage_minio/*
+!storage_minio/mlflow/meme.jpg
