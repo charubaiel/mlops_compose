@@ -1,22 +1,25 @@
 version: '3.10'
 
 services:
-
+  # БД всего проекта под логи, артефакты и тд
   db:
-    image: postgres:11
+    image: postgres:14
     restart: always
-    container_name: mlflow_postgres
+    container_name: mlops_db
     volumes: 
       - ./storage_db:/var/lib/postgresql/data
+      - ./params/db_init.sh:/docker-entrypoint-initdb.d/db_init.sh
     environment: 
-      - POSTGRES_DB=${DB_DB}
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - MLFLOW_DB=${MLFLOW_DB}
+      - DAGSTER_DB=${DAGSTER_DB}
+      - POSTGRES_USER=${MLOPS_DB_USER}
+      - POSTGRES_PASSWORD=${MLOPS_DB_PASSWORD}
     expose:
-      - ${DB_PORT}
+      - ${MLOPS_DB_PORT}
     networks:
       - mlflow_net
-
+      - gos_ser_network
+  # data lake для хранения мелких артифактов и моделей
   s3:
     image: minio/minio
     restart: always
@@ -32,16 +35,16 @@ services:
     command: server --address ":9000" --console-address ":9001" /data/
     networks:
       - mlflow_net
-
-  server:
+  # Сервер трекинга и организации ML работ
+  mlflow_server:
     image: mlflow_server
     restart: always
     build:
       context: .
-      dockerfile: ./dockerfile
+      dockerfile: ./dockerfile_mlflow
     container_name: mlflow_server
     environment:
-      - BACKEND=postgresql://${DB_USER}:${DB_PASSWORD}@db:${DB_PORT}/${DB_DB}
+      - BACKEND=postgresql://${MLOPS_DB_USER}:${MLOPS_DB_PASSWORD}@db:${MLOPS_DB_PORT}/${MLFLOW_DB}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - ARTIFACTS=s3://${AWS_BUCKET_NAME}
@@ -63,7 +66,71 @@ services:
     networks:
       - mlflow_net
 
+  # Докер служба для оркестратора, чтобы он мог поднимать отдельные докеры под отдельные раны
+  dagit:
+    build:
+      context: .
+      dockerfile: ./dockerfile_dagster
+
+    entrypoint:
+      - dagit
+      - -h
+      - "0.0.0.0"
+      - -p
+      - ${DAGSTER_PORT}
+      - -w
+      - workspace.yaml
+    container_name: dagit
+    environment:
+        DB_USER: ${MLOPS_DB_USER}
+        DB_PASSWORD: ${MLOPS_DB_PASSWORD}
+        DB_PORT: ${MLOPS_DB_PORT}
+        DAGSTER_DB: ${DAGSTER_DB}
+        MAB_BOT_TOKEN: $MAB_BOT_TOKEN
+        MAB_DB_SERVER: $MAB_DB_SERVER
+        MOS_MONITORING_DB_AUTH: $MOS_MONITORING_DB_AUTH
+    volumes:
+      - ./params/workspace.yaml:/opt/dagster/dagster_home/workspace.yaml
+      - ./params/dagster.yaml:/opt/dagster/dagster_home/dagster.yaml
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - ${DAGSTER_PORT}:${DAGSTER_PORT}
+    networks:
+      - gos_ser_network
+    depends_on:
+      - db
+
+  # # This service runs the dagster-daemon process, which is responsible for taking runs
+  # # off of the queue and launching them, as well as creating runs from schedules or sensors.
+  dagster_daemons:
+    build:
+      context: .
+      dockerfile: ./dockerfile_dagster
+    entrypoint:
+      - dagster-daemon
+      - run
+    container_name: dagster_daemons
+    environment:
+        DB_USER: ${MLOPS_DB_USER}
+        DB_PASSWORD: ${MLOPS_DB_PASSWORD}
+        DB_PORT: ${MLOPS_DB_PORT}
+        DAGSTER_DB: ${DAGSTER_DB}
+        MAB_BOT_TOKEN: $MAB_BOT_TOKEN
+        MAB_DB_SERVER: $MAB_DB_SERVER
+        MOS_MONITORING_DB_AUTH: $MOS_MONITORING_DB_AUTH
+    volumes:
+      - ./params/workspace.yaml:/opt/dagster/dagster_home/workspace.yaml
+      - ./params/dagster.yaml:/opt/dagster/dagster_home/dagster.yaml
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: on-failure
+    networks:
+      - gos_ser_network
+    depends_on:
+      - db
+
 networks:
   mlflow_net:
+    driver: bridge
+  gos_ser_network:
     driver: bridge
 
