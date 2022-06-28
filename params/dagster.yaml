@@ -14,9 +14,6 @@ run_launcher:
       - DB_USER
       - DB_PASSWORD
       - DAGSTER_DB
-      - MAB_BOT_TOKEN
-      - MAB_DB_SERVER
-      - MOS_MONITORING_DB_AUTH
     network: gos_ser_network
     container_kwargs:
       auto_remove: true
@@ -34,7 +31,7 @@ run_storage:
       db_name:
         env: DAGSTER_DB
       port: 
-        env: DB_PORT
+        env: MLOPS_DB_PORT
 
 schedule_storage:
   module: dagster_postgres.schedule_storage
@@ -49,7 +46,7 @@ schedule_storage:
       db_name:
         env: DAGSTER_DB
       port: 
-        env: DB_PORT
+        env: MLOPS_DB_PORT
 
 event_log_storage:
   module: dagster_postgres.event_log
@@ -64,4 +61,4 @@ event_log_storage:
       db_name:
         env: DAGSTER_DB
       port: 
-        env: DB_PORT
+        env: MLOPS_DB_PORT
