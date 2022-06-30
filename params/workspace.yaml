@@ -1,8 +1,8 @@
 load_from:
    - grpc_server:
-       host: gos_ser_monitoring_tg
+       host: app_healthcheck_monitoring
        port: 4000
-       location_name: "gos_ser_monitoring_tg"
+       location_name: "app_healthcheck_monitoring"
    - grpc_server:
        host: app_events_monitoring
        port: 4000

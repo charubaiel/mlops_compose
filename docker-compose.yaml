@@ -82,16 +82,18 @@ services:
       - workspace.yaml
     container_name: dagit
     environment:
-        DB_USER: ${MLOPS_DB_USER}
-        DB_PASSWORD: ${MLOPS_DB_PASSWORD}
+        MLOPS_DB_USER: ${MLOPS_DB_USER}
+        MLOPS_DB_PASSWORD: ${MLOPS_DB_PASSWORD}
         MLOPS_DB_PORT: ${MLOPS_DB_PORT}
         DAGSTER_DB: ${DAGSTER_DB}
     volumes:
       - ./params/workspace.yaml:/opt/dagster/dagster_home/workspace.yaml
       - ./params/dagster.yaml:/opt/dagster/dagster_home/dagster.yaml
       - /var/run/docker.sock:/var/run/docker.sock
+    expose:
+      - "${DAGSTER_PORT}"
     ports:
-      - ${DAGSTER_PORT}:${DAGSTER_PORT}
+      - "${DAGSTER_PORT}:${DAGSTER_PORT}"
     networks:
       - mlflow_net
     depends_on:
@@ -108,10 +110,13 @@ services:
       - run
     container_name: dagster_daemons
     environment:
-        DB_USER: ${MLOPS_DB_USER}
-        DB_PASSWORD: ${MLOPS_DB_PASSWORD}
+        MLOPS_DB_USER: ${MLOPS_DB_USER}
+        MLOPS_DB_PASSWORD: ${MLOPS_DB_PASSWORD}
         MLOPS_DB_PORT: ${MLOPS_DB_PORT}
         DAGSTER_DB: ${DAGSTER_DB}
+        MAB_BOT_TOKEN: $MAB_BOT_TOKEN
+        MAB_DB_SERVER: $MAB_DB_SERVER
+        MOS_MONITORING_DB_AUTH: $MOS_MONITORING_DB_AUTH
     volumes:
       - ./params/workspace.yaml:/opt/dagster/dagster_home/workspace.yaml
       - ./params/dagster.yaml:/opt/dagster/dagster_home/dagster.yaml
@@ -125,4 +130,5 @@ services:
 networks:
   mlflow_net:
     driver: bridge
+    name : 'mlflow_net'
 

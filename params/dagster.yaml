@@ -11,12 +11,17 @@ run_launcher:
   class: DockerRunLauncher
   config:
     env_vars:
-      - DB_USER
-      - DB_PASSWORD
+      - MLOPS_DB_USER
+      - MLOPS_DB_PASSWORD
       - DAGSTER_DB
-    network: gos_ser_network
+      - MLOPS_DB_PORT
+      - MAB_BOT_TOKEN
+      - MAB_DB_SERVER
+      - MOS_MONITORING_DB_AUTH
+    network: mlflow_net
     container_kwargs:
-      auto_remove: true
+      auto_remove: True
+
 
 run_storage:
   module: dagster_postgres.run_storage
@@ -25,9 +30,9 @@ run_storage:
     postgres_db:
       hostname: mlops_db
       username:
-        env: DB_USER
+        env: MLOPS_DB_USER
       password:
-        env: DB_PASSWORD
+        env: MLOPS_DB_PASSWORD
       db_name:
         env: DAGSTER_DB
       port: 
@@ -40,9 +45,9 @@ schedule_storage:
     postgres_db:
       hostname: mlops_db
       username:
-        env: DB_USER
+        env: MLOPS_DB_USER
       password:
-        env: DB_PASSWORD
+        env: MLOPS_DB_PASSWORD
       db_name:
         env: DAGSTER_DB
       port: 
@@ -55,9 +60,9 @@ event_log_storage:
     postgres_db:
       hostname: mlops_db
       username:
-        env: DB_USER
+        env: MLOPS_DB_USER
       password:
-        env: DB_PASSWORD
+        env: MLOPS_DB_PASSWORD
       db_name:
         env: DAGSTER_DB
       port: 
