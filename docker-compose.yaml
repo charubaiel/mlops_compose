@@ -69,7 +69,6 @@ services:
   # Докер служба для оркестратора, чтобы он мог поднимать отдельные докеры под отдельные раны
   dagit:
     build:
-      image: mlflow_dagit
       context: .
       dockerfile: ./dockerfile_dagster
 
@@ -104,7 +103,6 @@ services:
   # # off of the queue and launching them, as well as creating runs from schedules or sensors.
   dagster_daemons:
     build:
-      image: mlflow_dagster_daemons
       context: .
       dockerfile: ./dockerfile_dagster
     entrypoint:
