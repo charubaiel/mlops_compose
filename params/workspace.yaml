@@ -3,7 +3,3 @@ load_from:
        host: app_healthcheck_monitoring
        port: 4000
        location_name: "app_healthcheck_monitoring"
-   - grpc_server:
-       host: app_events_monitoring
-       port: 4000
-       location_name: "app_events_monitoring"
