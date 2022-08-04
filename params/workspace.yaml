@@ -1,0 +1,9 @@
+load_from:
+   - grpc_server:
+       host: gos_ser_monitoring_tg
+       port: 4000
+       location_name: "gos_ser_monitoring_tg"
+   - grpc_server:
+       host: app_events_monitoring
+       port: 4000
+       location_name: "app_events_monitoring"
